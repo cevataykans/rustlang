@@ -55,11 +55,19 @@ cargo test # runs test cases
 
 * &x borrows a reference to x, and that *r is the value that the reference r refers to
 
+## Packages
+
+* The crossbeam crate provides a number of valuable concurrency facilities, including a scoped thread facility.
+
 ## Code Samples
 ```rust
 // variables, variables are immutable by default
 let apples = 5;
 let mut banana = 5; // mutable
+
+let pixel = (10, 20)
+pixel.0 // first element of tuple
+pixel.0 as f64 // how type conversion is made!
 
 fn gcd( n: u64, mut m: u64) {
 

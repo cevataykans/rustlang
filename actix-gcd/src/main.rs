@@ -1,5 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer};
 use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize)]
 struct GcdParameters {
@@ -8,6 +9,25 @@ struct GcdParameters {
 }
 
 fn main() {
+    let mut numbers = Vec::new(); // must be marked as mut to push values!
+
+    for arg in env::args().skip(1) {
+        numbers.push(arg.parse::<u64>().expect("error parssing arg"));
+    }
+
+    if numbers.len() == 0 {
+        eprintln!("Usage: gcd NUMBER NUMBER ....");
+        std::process::exit(1);
+    }
+
+    let mut d = numbers[0];
+    for m in &numbers[1..] {
+        // borrow a reference to elements and then dereference it
+        d = gcd(d, *m);
+    }
+
+    println!("The greatest common divisor of {:?} is {}", numbers, d);
+
     let server = HttpServer::new(|| {
         App::new()
             .route("/", web::get().to(get_index))
@@ -65,4 +85,10 @@ fn gcd(mut n: u64, mut m: u64) -> u64 {
         m = m % n;
     }
     n
+}
+
+#[test]
+fn test_gcd() {
+    assert_eq!(gcd(14, 15), 1);
+    assert_eq!(gcd(2 * 3 * 5 * 11 * 17, 3 * 7 * 11 * 13 * 19), 3 * 11)
 }
