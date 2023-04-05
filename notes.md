@@ -75,5 +75,8 @@ fn gcd( n: u64, mut m: u64) {
 fn test_gcd() {
     //...
 }
+
+// closures
+HttpServer::new( || ...) //args between ||
 ```
 
