@@ -566,6 +566,196 @@ v.1; // error: access through other paths still forbidden
 println!("{}", r1); // r1 gets used here
 ```
 
+## Expressions
+
+**Rust is what is called an expression language.**
+
+Declaration => let name: type = expr;
+* Type and initializer are optional
+* Semicolon required 
+
+```rust
+// Dont use
+for line in file.lines() {
+    let line = line?;
+    ...
+}
+
+// Use as convention!
+for line_resilt in file.lines() {
+    let line = line_result?;
+    ...
+}
+
+if condition1 {
+    block1
+} else if condition2 {
+    block2
+} else {
+    block_n
+}
+
+match value {
+    pattern => expr,
+    ...
+}
+// Can be optimized if constants are returned and no branching is even done!
+// Jump tables are used for optimization
+// Variety of patterns can be used on the left side
+match code {
+    0 => println!("OK"),
+    1 => println!("Wires Tangled"),
+    2 => println!("User Asleep"),
+    _ => println!("Unrecognized Error {}", code) // matches alles
+}
+
+if let pattern = expr {
+    block1
+} else {
+    block2
+}
+
+if let Some(cookie) = request.session_cookie {
+    return restore_session(cookie);
+}
+if let Err(err) = show_cheesy_anti_robot_task() {
+    log_robot_attempt(err);
+    politely_accuse_user_of_being_a_robot();
+} else {
+    session.mark_as_human();
+}
+
+//Equivalent of match
+match expr {
+    pattern => { block1 }
+    _ => { block2 }
+}
+
+// LOOPS
+
+while condition {
+    block
+}
+
+while let pattern = expr {
+    block
+}
+
+loop {
+    block
+}
+
+for pattern in iterable {
+    block
+}
+
+// Standard C for loop for ( int i = 0; i < 20; i++>) written like:
+for i in 0..20 {
+    println!("{}", i);
+}
+
+// to avoid moving values in vectors, arrays!
+for rs in &strings {
+    println!("String {:?} is at address {:p}.", *rs, rs);
+}
+
+let answer = loop {
+    if let Some(line) = next_line() {
+        if line.starts_with("answer: ") {
+            break line;
+        }
+    } else {
+        break "answer: nothing";
+    }
+
+    continue; //jumps to the next loop iteration
+    // in for loop, if there are no more values, the loop exits
+};
+
+'search:
+for room in apartment {
+    for spot in room.hiding_spots() {
+        if spot.contains(keys) {
+            println!("Your keys are {} in the {}.", spot, room);
+            break 'search; // use labels to exit correct loop blocks
+        }
+    }
+}
+
+// A BREAK can habe both A LABEL and A VALUE EXPRESSION for the let declaration.
+
+// Perfectly normal => ! return type makes the function -> divergent function
+fn serve_forever(socket: ServerSocket, handler: ServerHandler) -> ! {
+    socket.listen();
+    loop {
+        let s = socket.accept();
+        handler.handle(s);
+    }
+}
+
+// Type - associated function call!
+// SIMILAR TO STATIC METHODS IN OOP
+let mut numbers = Vec::new();
+
+// One quirk!
+return Vec<i32>::with_capacity(1000); // error: something about chained comparisons
+let ramp = (0 .. n).collect<Vec<i32>>(); // same error
+
+return Vec::<i32>::with_capacity(1000); // ok, using ::<
+let ramp = (0 .. n).collect::<Vec<i32>>(); // ok, using ::<
+
+::<...> => turbofish!
+
+return Vec::with_capacity(10); // ok, if the fn return type is Vec<i32>
+let ramp: Vec<i32> = (0 .. n).collect(); // ok, variable's type is given
+
+.. // RangeFull
+a .. // RangeFrom { start: a }
+.. b // RangeTo { end: b }
+a .. b // Range { start: a, end: b }
+
+..= b // RangeToInclusive { end: b }
+a ..= b // RangeInclusive::new(a, b)
+
+// Quicksort might look like this!
+fn quicksort<T: Ord>(slice: &mut [T]) {
+    if slice.len() <= 1 {
+        return; // Nothing to sort.
+    }
+    // Partition the slice into two parts, front and back.
+    let pivot_index = partition(slice);
+    // Recursively sort the front half of `slice`.
+    quicksort(&mut slice[.. pivot_index]);
+    // And the back half.
+    quicksort(&mut slice[pivot_index + 1 ..]);
+}
+
+let padovan: Vec<u64> = compute_padovan_sequence(n);
+for elem in &padovan { // elem is &u64, *elem is u64
+    draw_triangle(turtle, *elem);
+}
+
+RUST USES ! for BITWISE NOT
+let hi: u8 = 0xe0;
+let lo = !hi; // 0x1f
+
+// CLOSURES
+let is_even = |x| x % 2 == 0;
+
+// If return type is given, block is requried
+let is_even = |x: u64| -> bool x % 2 == 0; // error
+let is_even = |x: u64| -> bool { x % 2 == 0 }; // ok
+```
+
+* A block can contain item declarations (fn inside fn eg.)
+
+* **It’s considered good style to omit the types whenever they can be inferred.**
+
+* Bit shifting is always sign-extending on signed integer types and zero-extending on
+unsigned integer types.
+
+## Errors
+
 ## Code Samples
 
 ```rust
