@@ -526,7 +526,45 @@ let u: Rc<String> = s.clone();
 
 * std::rc::Weak
 
+* **PASS BY VALUE**
+    * when ownership changes
+* **PASS BY REFERENCE**
+    * When a reference is given
 
+> in Rust you use the & and * operators to create and follow references, with the exception of the . operator, which borrows and dereferences implicitly.
+
+```rust
+let mut x = 10;
+let r1 = &x;
+let r2 = &x; // ok: multiple shared borrows permitted
+x += 10; // error: cannot assign to `x` because it is borrowed
+let m = &mut x; // error: cannot borrow `x` as mutable because it is
+// also borrowed as immutable
+println!("{}, {}, {}", r1, r2, m); // the references are used here,
+// so their lifetimes must last
+// at least this long
+
+let mut y = 20;
+let m1 = &mut y;
+let m2 = &mut y; // error: cannot borrow as mutable more than once
+let z = y; // error: cannot use `y` because it was mutably borrowed
+println!("{}, {}, {}", m1, m2, z); // references are used here
+
+let mut w = (107, 109);
+let r = &w;
+let r0 = &r.0; // ok: reborrowing shared as shared
+let m1 = &mut r.1; // error: can't reborrow shared as mutable
+println!("{}", r0); // r0 gets used here
+
+let mut v = (136, 139);
+let m = &mut v;
+let m0 = &mut m.0; // ok: reborrowing mutable from mutable
+*m0 = 137;
+let r1 = &m.1; // ok: reborrowing shared from mutable,
+// and doesn't overlap with m0
+v.1; // error: access through other paths still forbidden
+println!("{}", r1); // r1 gets used here
+```
 
 ## Code Samples
 
