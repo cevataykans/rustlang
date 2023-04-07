@@ -395,6 +395,139 @@ fn(&str) -> bool // pointer to function, str::is_empty
 Closure types have no written form // closure
 // -> |a, b| { a*a + b*b }
 
+## Ownership & Moves
+
+Some class owns some object that it points to
+* This generally means that the owning object gets to decide when to free the owned object: when the owner is destroyed, it destroys its possessions along with it
+
+* A variable owns its value. When control leaves the block in which the variable is
+declared, the variable is dropped, so its value is dropped along with it
+
+* A variable owns its value. When control leaves the block in which the variable is
+declared, the variable is dropped, so its value is dropped along with it
+
+* The standard library provides the reference-counted pointer types Rc and Arc,
+which allow values to have multiple owners, under some restrictions
+
+* Very simple types like integers, floating-point numbers, and characters are
+excused from the ownership rules. These are called Copy types.
+
+* You can move values from one owner to another. This allows you to build,
+rearrange, and tear down the tree
+
+```rust
+let s = vec!["udon".to_string(), "ramen".to_string(), "soba".to_string()];
+let t = s; // s is now considered uninitialized
+let u = s; // compile error!
+
+let mut s = "Govinda".to_string();
+s = "Siddhartha".to_string(); // value "Govinda" dropped here
+
+let mut s = "Govinda".to_string();
+let t = s;
+s = "Siddhartha".to_string(); // nothing is dropped here
+
+let x = vec![10, 20, 30];
+if c {
+    f(x); // ... ok to move from x here
+} else {
+    g(x); // ... and ok to also move from x here
+} 
+h(x); // bad: x is uninitialized here if either path uses it
+
+let x = vec![10, 20, 30];
+while f() {
+    g(x);   // bad: x would be moved in first iteration,
+            // uninitialized in second
+}
+
+let mut x = vec![10, 20, 30];
+while f() {
+    g(x);       // move from x
+    x = h();    // give x a fresh value
+} 
+e(x);
+
+
+// possible ops to move an element from vec to a variable
+// Build a vector of the strings "101", "102", ... "105"
+let mut v = Vec::new();
+for i in 101 .. 106 {
+    v.push(i.to_string());
+}
+// 1. Pop a value off the end of the vector:
+let fifth = v.pop().expect("vector empty!");
+assert_eq!(fifth, "105");
+// 2. Move a value out of a given index in the vector,
+// and move the last element into its spot:
+let second = v.swap_remove(1);
+assert_eq!(second, "102");
+// 3. Swap in another value for the one we're taking out:
+let third = std::mem::replace(&mut v[2], "substitute".to_string());
+assert_eq!(third, "103");
+// Let's see what's left of our vector.
+assert_eq!(v, vec!["101", "104", "substitute"]);
+
+
+let v = vec!["liberté".to_string(),
+    "égalité".to_string(),
+    "fraternité".to_string()];
+// consumes all elements in the loop. v is uninitialized!
+for mut s in v {
+    s.push('!');
+    println!("{}", s);
+}
+```
+
+* Copy Types
+    * all the machine integer and floating-point numeric types
+    * the char and bool types
+    * A tuple or fixed-sized arr of Copy types is itself a copy type
+
+* As a rule of thumb, any type that needs to do something special when a value is drop‐
+ped cannot be Copy
+
+* What about types you define yourself? **By default, struct and enum types are not Copy**
+
+```rust
+// womt compile
+struct Label { number: u32 }
+fn print(l: Label) { 
+    println!("STAMP: {}", l.number); 
+}
+let l = Label { number: 3 };
+print(l);
+println!("My label number is: {}", l.number);
+
+/*
+If all the fields of your
+struct are themselves Copy, then you can make the type Copy as well by placing the
+attribute #[derive(Copy, Clone)]
+*/
+#[derive(Copy, Clone)]
+struct Label { number: u32 }
+```
+> In Rust, every move is a byte-for-byte, shallow copy that leaves the source uninitialized. Copies are the same, except that the source remains initialized. 
+
+Arc -> Atomic reference count (safe to share between threads)
+
+Rc -> Reference count
+
+Python, Java like ptr assignment:
+```rust
+use std::rc::Rc;
+// Rust can infer all these types; written out for clarity
+let s: Rc<String> = Rc::new("shirataki".to_string());
+let t: Rc<String> = s.clone();
+let u: Rc<String> = s.clone();
+```
+
+* Rust assumes the referent of an Rc pointer might in general be shared, so it must not be mutable. 
+
+* std::rc::Weak
+
+
+
 ## Code Samples
 
 ```rust
