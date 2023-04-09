@@ -954,6 +954,251 @@ that capitalize the first letter of each word, like GrayscaleMap, a convention c
 CamelCase (or PascalCase). Fields and methods are lowercase, with words separated
 by underscores. This is called snake_case
 
+```rust
+#[derive(Copy, Clone, Debug, PartialEq)] // Rust derives for us
+struct Point {
+    x: f64,
+    y: f64
+}
+```
+
+* Use cells to have a bit of mutability inside immutable types
+    * The only special thing about a Cell is that you can get and set the field even if you don’t have mut access to the Cell itself
+    * Cell does not let you call mut methods on a shared value. (you can set/get integers, but cannot set/get a ref like File, what if you want to write smt to the file?)
+    *  Like Cell<T>, RefCell<T> is a generic type that contains a single value of type T. Unlike Cell, RefCell supports borrowing refer‐ ences to its T valu
+
+## Enums and Patterns
+
+```rust
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum TimeUnit {
+    Seconds, Minutes, Hours, Days, Months, Years,
+}
+
+impl TimeUnit {
+    /// Return the plural noun for this time unit.
+    fn plural(self) -> &'static str {
+    match self {
+            TimeUnit::Seconds => "seconds",
+            TimeUnit::Minutes => "minutes",
+            TimeUnit::Hours => "hours",
+            TimeUnit::Days => "days",
+            TimeUnit::Months => "months",
+            TimeUnit::Years => "years",
+        }
+    }
+
+    /// Return the singular noun for this time unit.
+    fn singular(self) -> &'static str {
+        self.plural().trim_end_matches('s')
+    }
+}
+
+enum Ordering {
+    Less,
+    Equal,
+    Greater,
+}
+
+use std::cmp::Ordering;
+fn compare(n: i32, m: i32) -> Ordering {
+    if n < m {
+        Ordering::Less
+    } else if n > m {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
+enum RoughTime {
+    InThePast(TimeUnit, u32),
+    JustNow,
+    InTheFuture(TimeUnit, u32),
+}
+
+let four_score_and_seven_years_ago = RoughTime::InThePast(TimeUnit::Years, 4 * 20 + 7);
+let three_hours_from_now = RoughTime::InTheFuture(TimeUnit::Hours, 3);
+
+enum Shape {
+    Sphere { center: Point3d, radius: f32 },
+    Cuboid { corner1: Point3d, corner2: Point3d },
+}
+let unit_sphere = Shape::Sphere {
+    center: ORIGIN,
+    radius: 1.0,
+};
+
+enum RelationshipStatus {
+    Single,
+    InARelationship,
+    ItsComplicated(Option<String>),
+    ItsExtremelyComplicated {
+        car: DifferentialEquation,
+        cdr: EarlyModernistPoem,
+    },
+}
+
+// We can represent any tree like structrue with enums
+use std::collections::HashMap;
+enum Json {
+    Null,
+    Boolean(bool),
+    Number(f64),
+    String(String),
+    Array(Vec<Json>),
+    Object(Box<HashMap<String, Json>>),
+}
+
+// Enums can be generic, from std:
+enum Option<T> {
+    None,
+    Some(T),
+}
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+// An ordered collection of `T`s.
+enum BinaryTree<T> {
+    Empty,
+    NonEmpty(Box<TreeNode<T>>),
+}
+// A part of a BinaryTree.
+struct TreeNode<T> {
+    element: T,
+    left: BinaryTree<T>,
+    right: BinaryTree<T>,
+}
+```
+
+**The only way to access the data in an enum is the safe way: using patterns.**
+
+```rust
+fn rough_time_to_english(rt: RoughTime) -> String {
+ match rt {
+        RoughTime::InThePast(units, count) =>
+            format!("{} {} ago", count, units.plural()),
+        RoughTime::JustNow =>
+            format!("just now"),
+        RoughTime::InTheFuture(units, count) =>
+            format!("{} {} from now", count, units.plural()),
+    }
+ }
+
+ match get_account(id) {
+    ...
+    Some(Account {
+            name, language, // <--- the 2 things we care about
+            id: _, status: _, address: _, birthday: _, eye_color: _,
+            pet: _, security_question: _, hashed_innermost_secret: _,
+            is_adamantium_preferred_customer: _, }) =>
+        language.show_custom_greeting(name),
+}
+
+// tell rust we dont care about others => ..
+Some(Account { name, language, .. }) =>
+    language.show_custom_greeting(name),
+
+
+match account {
+    Account { name, language, .. } => {
+        ui.greet(&name, &language);
+        ui.show_settings(&account); // error: borrow of moved value: `account`
+    }
+}
+
+// To fix this, use ref!
+match account {
+    Account { ref name, ref language, .. } => {
+        ui.greet(name, language);
+        ui.show_settings(&account); // ok
+    }
+}
+
+// can use ref mut !
+
+// you can match references, but ofc you cant 
+match friend.borrow_car() {
+    Some(&Car { engine, .. }) => // error: can't move out of borrow
+    ...
+    None => {}
+}
+
+match point_to_hex(click) {
+    None => Err("That's not a game space."),
+    Some(hex) => {
+        if hex == current_hex {
+            Err("You are already there! You must click somewhere else")
+        } else {
+            Ok(hex)
+        }
+    }
+}
+
+// Using guards!
+match point_to_hex(click) {
+    None => Err("That's not a game space."),
+    Some(hex) if hex == current_hex =>
+        Err("You are already there! You must click somewhere else"),
+    Some(hex) => Ok(hex)
+}
+
+match next_char {
+    '0'..='9' => self.read_number(),
+    'a'..='z' | 'A'..='Z' => self.read_word(),
+    ' ' | '\t' | '\n' => self.skip_whitespace(),
+    _ => self.handle_punctuation(),
+}
+
+match self.get_selection() {
+    Shape::Rect(top_left, bottom_right) => {
+        optimized_paint(&Shape::Rect(top_left, bottom_right))
+    }
+        other_shape => {
+        paint_outline(other_shape.get_outline())
+    }
+}
+// can be written as
+match self.get_selection() {
+    rect @ Shape::Rect(..) => {
+        optimized_paint(&rect)
+    }   
+    other_shape => {
+        paint_outline(other_shape.get_outline())
+    }
+}
+
+match chars.next() {
+    Some(digit @ '0'..='9') => read_number(digit, chars),
+    ...
+},
+
+// Pattern Other use cases:
+
+// ...unpack a struct into three new local variables
+let Track { album, track_number, title, .. } = song;
+// ...unpack a function argument that's a tuple
+fn distance_to((x, y): (f64, f64)) -> f64 { ... }
+// ...iterate over keys and values of a HashMap
+for (id, document) in &cache_map {
+    println!("Document #{}: {}", id, document.title);
+}
+// ...automatically dereference an argument to a closure
+// (handy because sometimes other code passes you a reference
+// when you'd rather have a copy)
+let sum = numbers.fold(0, |a, &num| a + num);
+
+// Notica that all the four previous patterns are guaranteed to match!
+```
+
+> A refutable pattern is one that might not match, like Ok(x), which doesn’t match an error result, or '0' ..= '9', which doesn’t match the character 'Q'. Refutable patterns can be used in match arms, because match is designed for them
+
+**You can also use patterns with if let and while let**
+
+
+
 ## Code Samples
 
 ```rust
