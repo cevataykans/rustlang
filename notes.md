@@ -34,6 +34,11 @@ rustup component add rustfmt
 rustc --version
 rustc main.rs # compiles
 
+# publishing crates on cargo.io
+cargo package
+cargo login "API_KEY"
+caego publish
+
 cargo fmt # formats any cargo project
 cargo fix
 cargo build (--release) # release flag compiles with optimizations
@@ -755,6 +760,199 @@ let is_even = |x: u64| -> bool { x % 2 == 0 }; // ok
 unsigned integer types.
 
 ## Errors
+
+Errors are handled using Result type
+* Environmental errors: input, network, permissions etc.
+* Can be unavoidable, not related to us
+
+**Panic is for the other kind of error, the kind that should never happen**
+
+You can use panic!() macro
+* Panics are all programmer related!
+* Panics are like runtimeexceptions seen in Java, the behavior is well-defined, it just shouldnt be happening!
+* Panics are not **crash or undefined behavior**
+* Panics are per thread
+* std::panic::catch_unwind() can be used to cath stack unwinding, and continue execution
+
+* Note that you can catch panics that unwind the stack only, not every panic has the same routine!
+
+> If you compile with -C panic=abort, the first panic in your program immediately aborts the process. (With this option, Rust does not need to know how to unwind the stack, so this can reduce the size of your compiled code.
+
+> If a .drop() method triggers a second panic while Rust is still trying to clean up after the first, this is considered fatal. Rust stops unwinding and aborts the whole process.
+
+```rust
+// funcs dont have exceptions, but funcs that can fail have a return type!
+fn get_weather(location: LatLng) -> Result<WeatherReport, io::Error>
+
+// most common way, rust way of try/catch
+match get_weather(hometown) {
+    Ok(report) => {
+        display_weather(hometown, &report);
+    }
+    Err(err) => {
+        println!("error querying the weather: {}", err);
+        schedule_weather_retry();
+    }
+}
+
+fn remove_file(path: &Path) -> Result<()> // type alias!
+pub type Result<T> = result::Result<T, Error>;
+
+//Printing every bit of err details
+
+use std::error::Error;
+use std::io::{Write, stderr};
+
+/// Dump an error message to `stderr`.
+///
+/// If another error happens while building the error message or
+/// writing to `stderr`, it is ignored.
+fn print_error(mut err: &dyn Error) {
+    let _ = writeln!(stderr(), "error: {}", err);
+    while let Some(source) = err.source() {
+        let _ = writeln!(stderr(), "caused by: {}", source);
+        err = source;
+    }
+}
+```
+
+**You can add a ? to any expression that produces a result**
+
+* On success, unwraps
+
+* On error, immediately returns from the enclosing function, passing the err up the call chain
+
+* ? also works similarly with the Option type. In a function that returns Option, you can use ? to unwrap a value and return early in the case of None
+
+```rust
+let weather = get_weather(hometown).ok()?;
+```
+
+**thiserror crate** can help defining good error types when dealing with multiple errors in a function
+
+> All of the standard library error types can be converted to the type Box<dyn std::error::Error + Send + Sync + 'static>.
+
+```rust
+type GenericError = Box<dyn std::error::Error + Send + Sync + 'static>;
+type GenericResult<T> = Result<T, GenericError>;
+
+let io_error = io::Error::new( // make our own io::Error
+    io::ErrorKind::Other, "timed out");
+return Err(GenericError::from(io_error)); // manually convert to GenericError
+
+loop {
+    match compile_project() {
+        Ok(()) => return Ok(()),
+        Err(err) => {
+        if let Some(mse) = err.downcast_ref::<MissingSemicolonError>() { // borrow a ref to err type, if it happens to be the MissingSemicolonError
+        // this way, matches an error that we want to cover specifically for
+            insert_semicolon_in_source_code(mse.file(), mse.line())?;
+            continue; // try again!
+        }
+            return Err(err);
+        }
+    }
+}
+
+let num = digits.parse::<u64>().unwrap(); // use this if you know that an error just cant happen!
+"99999999999999999999".parse::<u64>() // overflow error, using unwrap here would be a bug
+
+// like Go
+let _ = ...
+writeln!(stderr(), "error: {}", err); // warning: unused result
+let _ = writeln!(stderr(), "error: {}", err); // ok, ignore result
+
+// Custom Errors
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+#[error("{message:} ({line:}, {column})")] // generates code!
+pub struct JsonError {
+    message: String,
+    line: usize,
+    column: usize,
+}
+```
+
+Crates -> Code sharing
+
+Modules -> namespaces!
+
+> Modules do not automatically inherit names from their parent modules. For example,
+suppose we have this in our proteins/mod.rs:
+
+* By default, paths are relative to the current module
+
+* self is also a synonym for the current module, so we could write either:
+    * use self::AminoAcid::*;
+    * AminoAcid::*;
+
+> The keywords super and crate have a special meaning in paths: super refers to the
+parent module, and crate refers to the crate containing the current module.
+
+*  an absolute path, starting with ::, which always refers to an external crate.
+    * use ::image::Pixels; // the `image` crate's `Pixels`
+    * use self::image::Sampler; // the `image` module's `Sampler`
+
+> A struct’s fields, even private fields, are accessible throughout the module where the
+struct is declared, and its submodules. Outside the module, only public fields are
+accessible.
+
+> A constant is a bit like a C++ #define: the value is compiled into your code every
+place it’s used. A static is a variable that’s set up before your program starts running
+and lasts until it exits. 
+
+Turning this program into a library is easy. Here are the steps
+* Rename the file src/main.rs to src/lib.rs
+* Add the pub keyword to items in src/lib.rs that will be public features of our
+library.
+* Move the main function to a temporary file somewhere. We’ll come back to it in a
+minute
+
+#[test] -> runs func when cargo test is called
+
+> Use debug_assert! and debug_assert_eq! instead to write assertions that are checked only in debug build.
+
+You can test error cases:
+
+```rust
+/// This test passes only if division by zero causes a panic,
+/// as we claimed in the previous chapter.
+#[test]
+#[allow(unconditional_panic, unused_must_use)]
+#[should_panic(expected="divide by zero")]
+fn test_divide_by_zero_error() {
+    1 / 0; // should panic!
+}
+
+...
+
+cfg -> conditional compilation! // book page 191
+
+#[cfg(test)] // include this module only when testing
+mod tests {
+    fn roughly_equal(a: f64, b: f64) -> bool { // avoids compiler warnings!
+        (a - b).abs() < 1e-6
+    }
+
+    #[test]
+    fn trig_works() {
+        use std::f64::consts::PI;
+        assert!(roughly_equal(PI.sin(), 0.0));
+    }
+}
+```
+
+> Integration tests are valuable in part because they see your crate from the outside just as a user would. They test the crate’s public API
+
+* Create tests under alongside src for integration tests!
+
+## Structs
+
+> The convention in Rust is for all types, structs included, to have names
+that capitalize the first letter of each word, like GrayscaleMap, a convention called
+CamelCase (or PascalCase). Fields and methods are lowercase, with words separated
+by underscores. This is called snake_case
 
 ## Code Samples
 
