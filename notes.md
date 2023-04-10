@@ -1197,7 +1197,307 @@ let sum = numbers.fold(0, |a, &num| a + num);
 
 **You can also use patterns with if let and while let**
 
+## Traits and Generics
 
+```rust
+trait Write {
+    ...
+}
+
+use std::io::Write;
+// a mutable reference to any value that implements the Write trait!
+fn say_hello(out: &mut dyn Write) -> std::io::Result<()> { 
+    out.write_all(b"hello world\n")?;
+    out.flush()
+}
+
+use std::fs::File;
+let mut local_file = File::create("hello.txt")?;
+say_hello(&mut local_file)?; // works
+let mut bytes = vec![];
+say_hello(&mut bytes)?; // also works
+assert_eq!(bytes, b"hello world\n");
+
+// Given two values, pick whichever one is less.
+fn min<T: Ord>(value1: T, value2: T) -> T {
+    if value1 <= value2 {
+        value1
+    } else {
+        value2
+    }
+}
+```
+
+Traits describe a behavior & capability
+* A value that implements std::io::Write can write out bytes
+* A value that implements std::iter::Iterator can produce a sequence of
+values
+* A value that implements std::clone::Clone can make clones of itself in
+memory
+* A value that implements std::fmt::Debug can be printed using println!() with
+the {:?} format specifie
+
+```rust
+let mut buf: Vec<u8> = vec![];
+let writer: dyn Write = buf; // error: `Write` does not have a constant size
+let writer: &mut dyn Write = &mut buf; // ok
+
+fn say_hello<W: Write>(out: &mut W) -> std::io::Result<()> {
+    out.write_all(b"hello world\n")?;
+    out.flush()
+}
+
+// calling a generic method collect<C>() that takes no arguments
+let v1 = (0 .. 1000).collect(); // error: can't infer type
+let v2 = (0 .. 1000).collect::<Vec<i32>>(); // ok
+
+
+// Determine top ten values, they have to be printable, equalible and hashable
+use std::hash::Hash;
+use std::fmt::Debug;
+fn top_ten<T: Debug + Hash + Eq>(values: &Vec<T>) { ... }
+
+/// Run a query on a large, partitioned data set.
+/// See <http://research.google.com/archive/mapreduce.html>.
+fn run_query<M: Mapper + Serialize, R: Reducer + Serialize>(
+    data: &DataSet, map: M, reduce: R) -> Results
+{ ... }
+
+// More readable when traits get long!
+fn run_query<M, R>(data: &DataSet, map: M, reduce: R) -> Results
+    where M: Mapper + Serialize,
+    R: Reducer + Serialize
+{ ... }
+
+trait Vegetable {
+    ...
+}
+
+struct Salad<V: Vegetable> {
+    veggies: Vec<V> // supports only one type of object
+}
+
+struct Salad {
+    veggies: Vec<Box<dyn Vegetable>> // true polymorphism -> box is needed for asserting size
+}
+
+// Must only contain the trait funcs, anything else needs their own impl
+// like object helper functions etc.
+syntax: impl TraitName for Type {
+    trait functions...
+}
+
+trait IsEmoji {
+    fn is_emoji(&self) -> bool;
+}
+/// Implement IsEmoji for the built-in character type.
+impl IsEmoji for char {
+    fn is_emoji(&self) -> bool {
+        ...
+    }
+}
+assert_eq!('$'.is_emoji(), false);
+
+// WriteHTML is a custom trait
+/// You can write HTML to any std::io writer.
+impl<W: Write> WriteHtml for W { // all writers have this implementation now!
+// Extension trait!
+    fn write_html(&mut self, html: &HtmlDocument) -> io::Result<()> {
+        ...
+    }
+}
+
+use serde::Serialize;
+use serde_json;
+pub fn save_configuration(config: &HashMap<String, String>)
+    -> std::io::Result<()>
+{
+    // Create a JSON serializer to write the data to a file.
+    let writer = File::create(config_filename())?;
+    let mut serializer = serde_json::Serializer::new(writer);
+    // The serde `.serialize()` method does the rest.
+    config.serialize(&mut serializer)?;
+    Ok(())
+}
+
+/// Someone in the game world, either the player or some other
+/// pixie, gargoyle, squirrel, ogre, etc.
+trait Creature: Visible {
+    fn position(&self) -> (i32, i32);
+    fn facing(&self) -> Direction;
+    ...
+}
+
+// We must implement both Visible and Creature!
+// short hand for:
+trait Creature where Self: Visible {
+    ...
+}
+
+// Equivalent!
+"hello".to_string()
+str::to_string("hello")
+ToString::to_string("hello") // ToString trait belongs to str
+<str as ToString>::to_string("hello") // fully qualified method call
+// helpful when the two traits have the same method signature:
+
+outlaw.draw(); // error: draw on screen or draw pistol?
+Visible::draw(&outlaw); // ok: draw on screen
+HasPistol::draw(&outlaw); // ok: corral
+
+let zero = 0; // type unspecified; could be `i8`, `u8`, ...
+zero.abs(); // error: can't call method `abs`
+// on ambiguous numeric type
+i64::abs(zero); // ok
+
+// When usignt the function itself as a function value
+let words: Vec<String> = 
+    line.split_whitespace() // iterator produces &str values
+        .map(ToString::to_string) // ok
+        .collect();
+
+
+pub trait Iterator {
+    type Item;
+
+    fn next(&mut self) -> Option<Self::Item>; //Self::Item is a feature of each type of iterator, not standalone type
+    ...
+}
+
+/// Loop over an iterator, storing the values in a new vector.
+fn collect_into_vector<I: Iterator>(iter: I) -> Vec<I::Item> {
+    let mut results = Vec::new();
+    for value in iter {
+        results.push(value);
+    }
+    results
+}
+
+// Too verbose
+use std::iter;
+use std::vec::IntoIter;
+fn cyclical_zip(v: Vec<u8>, u: Vec<u8>) ->
+    iter::Cycle<iter::Chain<IntoIter<u8>, IntoIter<u8>>> {
+    v.into_iter().chain(u.into_iter()).cycle()
+}
+
+// readable, but allocates dynamic memory!
+fn cyclical_zip(v: Vec<u8>, u: Vec<u8>) -> Box<dyn Iterator<Item=u8>> {
+    Box::new(v.into_iter().chain(u.into_iter()).cycle())
+}
+
+fn cyclical_zip(v: Vec<u8>, u: Vec<u8>) -> impl Iterator<Item=u8> {
+    v.into_iter().chain(u.into_iter()).cycle()
+}
+
+// Associated Consts
+trait Greet {
+    const GREETING: &'static str = "Hello";
+    fn greet(&self) -> String;
+}
+
+trait Float {
+    const ZERO: Self;
+    const ONE: Self;
+}
+
+impl Float for f32 {
+    const ZERO: f32 = 0.0;
+    const ONE: f32 = 1.0;
+}
+impl Float for f64 {
+    const ZERO: f64 = 0.0;
+    const ONE: f64 = 1.0;
+}
+
+fn add_one<T: Float + Add<Output=T>>(value: T) -> T {
+    value + T::ONE
+}
+
+fn fib<T: Float + Add<Output=T>>(n: usize) -> T {
+    match n {
+        0 => T::ZERO,
+        1 => T::ONE,
+        n => fib::<T>(n - 1) + fib::<T>(n - 2)
+    }
+}
+
+// num crate for simplification and choosing the right interface!
+use std::ops::{Add, Mul};
+fn dot<N>(v1: &[N], v2: &[N]) -> N
+where N: Add<Output=N> + Mul<Output=N> + Default + Copy
+{
+    let mut total = N::default();
+    for i in 0 .. v1.len() {
+        total = total + v1[i] * v2[i];
+    }
+    total
+}
+
+use num::Num;
+fn dot<N: Num + Copy>(v1: &[N], v2: &[N]) -> N {
+    let mut total = N::zero();
+    for i in 0 .. v1.len() {
+        total = total + v1[i] * v2[i];
+    }
+    total
+}
+```
+> impl Trait allows us to “erase” the type of a return value, specifying only the trait or traits it implements, without dynamic dispatch or a heap allocation:
+
+## Operator Overloading
+
+* Comparison
+    * std::cmp::PartialEq
+    * std::cmp::PartialOrd
+* std::ops have:
+    * unary ops
+    * arithmatic ops
+    * bitwise ops
+    * compound assignment and arithmatic ops
+    * compount assignments and bitwise ops
+    * indexing
+
+> the expression a + b is actually shorthand for a.add(b)
+
+```rust
+// def of std::ops::Add
+trait Add<Rhs = Self> {
+    type Output;
+    fn add(self, rhs: Rhs) -> Self::Output;
+}
+
+//  Rust’s usual requirement that type parameters must be sized types, letting
+// us write traits like PartialEq<str> or PartialEq<[T]>. 
+where
+    Rhs: ?Sized
+
+trait PartialEq<Rhs = Self>
+where
+    Rhs: ?Sized,
+{
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
+}
+
+assert!(f64::is_nan(0.0 / 0.0));
+assert_eq!(0.0 / 0.0 == 0.0 / 0.0, false);
+assert_eq!(0.0 / 0.0 != 0.0 / 0.0, true);
+```
+
+>  expressions like 0.0/0.0 and others with no appropriate
+value must produce special not-a-number values, usually referred to as NaN values.
+The standard further requires that a NaN value be treated as unequal to every other
+value—including itself. 
+
+```rust
+use std::cmp::Reverse;
+intervals.sort_by_key(|i| Reverse(i.lower));
+
+
+```
 
 ## Code Samples
 

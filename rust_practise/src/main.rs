@@ -1,3 +1,4 @@
+mod custom_traits;
 mod custom_trees;
 
 use custom_trees::BinaryTree;

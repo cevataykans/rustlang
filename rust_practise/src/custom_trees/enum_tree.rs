@@ -12,7 +12,10 @@ pub struct TreeNode<T: Debug> {
     right: BinaryTree<T>,
 }
 
-impl<T: Debug + Ord> BinaryTree<T> {
+impl<T> BinaryTree<T>
+where
+    T: Ord + std::fmt::Debug,
+{
     pub fn add(&mut self, value: T) {
         match *self {
             BinaryTree::Empty => {
