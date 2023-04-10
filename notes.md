@@ -1495,8 +1495,75 @@ value—including itself.
 ```rust
 use std::cmp::Reverse;
 intervals.sort_by_key(|i| Reverse(i.lower));
+```
 
+## Utility Traits
 
+* Language Extension Traits
+    * Drop, Deref, DerefMut, From, Into
+* Market Traits
+    * Copy, Sized
+    * Used to bound generic type variables to express constraints you cant capture otherwise.
+* Public vocabulary traits
+    * Default, AsRef, AsMut, Borrow, BorrowMut
+    * TryFrom, TryInto, ToOwned
+    * Clone
+
+> If a type implements Drop, it cannot implement the Copy trait.
+
+> Rust can’t store unsized values in variables or pass them as arguments. You can only
+deal with them through pointers like &str or Box<dyn Write>
+
+> it is the implicit default in Rust: if
+you write struct S<T> { ... }, Rust understands you to mean struct S<T:
+Sized> { ... }. If you do not want to constrain T this way, you must explicitly opt
+out, writing struct S<T: ?Sized> { ... }. The ?Sized syntax is specific to this
+case and means “not necessarily Sized.” For example, if you write
+struct S<T: ?Sized> { b: Box<T> }, then Rust will allow you to write S<str> and
+S<dyn Write>, where the box becomes a fat pointer, as well as S<i32> and S<String>,
+where the box is an ordinary pointer
+
+> All of Rust’s collection types—Vec, HashMap, BinaryHeap, and so on—implement
+Default, String::new();
+
+```rust
+// Thanks to Default trait!
+use std::collections::HashSet;
+let squares = [4, 9, 16, 25, 36, 49, 64];
+let (powers_of_two, impure): (HashSet<i32>, HashSet<i32>)
+    = squares.iter().partition(|&n| n & (n-1) == 0);
+assert_eq!(powers_of_two.len(), 3);
+assert_eq!(impure.len(), 4);
+
+let (upper, lower): (String, String)
+    = "Great Teacher Onizuka".chars().partition(|&c| c.is_uppercase());
+assert_eq!(upper, "GTO");
+assert_eq!(lower, "reat eacher nizuka");
+
+// Borrow trait!
+impl<K, V> HashMap<K, V> where K: Eq + Hash
+{
+    fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+        where K: Borrow<Q>,
+              Q: Eq + Hash
+    { ... }
+}
+```
+
+> From and Into take owner‐
+ship of their argument, transform it, and then return ownership of the result back to
+the caller.
+
+```rust
+// Into is used to make funcs more flexible in the argumnets they accept
+println!("{:?}", ping(Ipv4Addr::new(23, 21, 68, 141))); // pass an Ipv4Addr
+println!("{:?}", ping([66, 146, 219, 98])); // pass a [u8; 4]
+println!("{:?}", ping(0xd076eb94_u32)); // pass a u32
+
+// from
+// into
+// try_into
+// try_from
 ```
 
 ## Code Samples

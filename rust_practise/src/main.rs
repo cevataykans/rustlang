@@ -14,4 +14,13 @@ fn main() {
     my_tree.add(5);
     my_tree.add(92);
     my_tree.print();
+
+    let a = match i64::from_str_radix("100", 2) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{:?}", e);
+            std::process::exit(1);
+        }
+    };
+    println!("{}", a);
 }
