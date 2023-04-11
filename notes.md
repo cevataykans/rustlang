@@ -1566,6 +1566,58 @@ println!("{:?}", ping(0xd076eb94_u32)); // pass a u32
 // try_from
 ```
 
+## Closures
+
+```rust
+// Arg list consumes the cities and stat!
+fn start_sorting_thread(mut cities: Vec<City>, stat: Statistic)
+-> thread::JoinHandle<Vec<City>>
+{
+    let key_fn = move |city: &City| -> i64 { -city.get_statistic(stat) };
+    
+    // STEAL instead of borrowing, this way, no outliving occurs
+    thread::spawn(move || {
+        cities.sort_by_key(key_fn);
+        cities
+    })
+}
+
+fn city_population_descending(city: &City) -> i64 {
+    -city.population
+}
+// Has type:
+fn(&City) -> i64
+
+let my_key_fn: fn(&City) -> i64 =
+    if user.prefs.by_population {
+        city_population_descending
+    } else {
+        city_monster_attack_risk_descending
+    };
+cities.sort_by_key(my_key_fn);
+
+fn count_selected_cities<F>(cities: &Vec<City>, test_fn: F) -> usize
+    where F: Fn(&City) -> bool
+{
+    let mut count = 0;
+    for city in cities {
+        if test_fn(city) {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn(&City) -> bool // fn type (functions only)
+Fn(&City) -> bool // Fn trait (both functions and closures)
+
+// calling mutable closures
+fn call_twice<F>(mut closure: F) where F: FnMut() {
+    closure();
+    closure();
+}
+```
+
 ## Code Samples
 
 ```rust

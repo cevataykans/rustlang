@@ -1,5 +1,6 @@
 mod custom_traits;
 mod custom_trees;
+mod event_system;
 
 use custom_trees::BinaryTree;
 
@@ -23,4 +24,6 @@ fn main() {
         }
     };
     println!("{}", a);
+
+    event_system::run_simulation();
 }
