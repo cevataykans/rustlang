@@ -1618,6 +1618,184 @@ fn call_twice<F>(mut closure: F) where F: FnMut() {
 }
 ```
 
+## Iterators
+
+```rust
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+    ... // many default methods
+}
+trait IntoIterator where Self::IntoIter: Iterator<Item=Self::Item> {
+    type Item;
+    type IntoIter: Iterator;
+    fn into_iter(self) -> Self::IntoIter;
+}
+
+// into_iter() returns elements based on the passed value, read only, mutable, or moving
+for element in &collection { ... }
+for element in &mut collection { ... }
+for element in collection { ... }
+
+// One simple and general way to produce a sequence of values is to provide a closure that returns them
+
+use rand::random; // In Cargo.toml dependencies: rand = "0.7"
+use std::iter::from_fn;
+// Generate the lengths of 1000 random line segments whose endpoints
+// are uniformly distributed across the interval [0, 1]. (This isn't a
+// distribution you're going to find in the `rand_distr` crate, but
+// it's easy to make yourself.)
+let lengths: Vec<f64> =
+    from_fn(|| Some((random::<f64>() - random::<f64>()).abs()))
+    .take(1000)
+    .collect();
+
+fn fibonacci() -> impl Iterator<Item=usize> {
+    let mut state = (0, 1);
+    std::iter::from_fn(move || {
+        state = (state.1, state.0 + state.1);
+        Some(state.0)
+    })
+}
+assert_eq!(fibonacci().take(8).collect::<Vec<_>>(),
+    vec![1, 1, 2, 3, 5, 8, 13, 21]);
+
+/*
+drain merely borrows a mutable reference to the collection, and
+when the iterator is dropped, it removes any remaining elements from the collection
+and leaves it empty
+
+Strings, vectors, and VecDeques, the
+drain method takes a range of elements to remove, rather than draining the entire
+sequence
+*/
+se std::iter::FromIterator;
+let mut outer = "Earth".to_string();
+let inner = String::from_iter(outer.drain(1..4));
+assert_eq!(outer, "Eh");
+assert_eq!(inner, "art");
+
+// many iters on different typs & traits
+std::iter::repeat("#9") Produces the given value forever
+
+/*
+map and filter return -> impl Iterator<
+Item=...>
+*/
+
+fn flat_map<U, F>(self, f: F) -> impl Iterator<Item=U::Item>
+    where F: FnMut(Self::Item) -> U, U: IntoIterator;
+
+use std::collections::BTreeMap;
+// A table mapping cities to their parks: each value is a vector.
+let mut parks = BTreeMap::new();
+parks.insert("Portland", vec!["Mt. Tabor Park", "Forest Park"]);
+parks.insert("Kyoto", vec!["Tadasu-no-Mori Forest", "Maruyama Koen"]);
+parks.insert("Nashville", vec!["Percy Warner Park", "Dragon Park"]);
+// Build a vector of all parks. `values` gives us an iterator producing
+// vectors, and then `flatten` produces each vector's elements in turn.
+let all_parks: Vec<_> = parks.values().flatten().cloned().collect();
+assert_eq!(all_parks, vec!["Tadasu-no-Mori Forest", "Maruyama Koen", "Percy Warner Park", "Dragon Park", "Mt. Tabor Park", "Forest Park"]);
+
+assert_eq!(vec![None, Some("day"), None, Some("one")]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>(),
+vec!["day", "one"]);
+
+use std::iter::Peekable;
+fn parse_number<I>(tokens: &mut Peekable<I>) -> u32
+    where I: Iterator<Item=char>
+{
+    let mut n = 0;
+    loop {
+        match tokens.peek() {
+            Some(r) if r.is_digit(10) => {
+                n = n * 10 + r.to_digit(10).unwrap();
+            } 
+            _ => return n
+        }
+        tokens.next();
+    }
+}
+
+let mut chars = "226153980,1766319049".chars().peekable();
+assert_eq!(parse_number(&mut chars), 226153980);
+// Look, `parse_number` didn't consume the comma! So we will.
+assert_eq!(chars.next(), Some(','));
+assert_eq!(parse_number(&mut chars), 1766319049);
+assert_eq!(chars.next(), None);
+
+// Fuse adapter makes sure that once you see None in Iterator, it is always None
+
+let upper_case: String = "große".chars()
+    .inspect(|c| println!("before: {:?}", c))
+    .flat_map(|c| c.to_uppercase())
+    .inspect(|c| println!(" after: {:?}", c))
+    .collect();
+assert_eq!(upper_case, "GROSSE");
+
+let message = "To: jimb\r\n\
+    From: id\r\n\
+    \r\n\
+    ooooh, donuts!!\r\n";
+let mut lines = message.lines();
+println!("Headers:");
+for header in lines.by_ref().take_while(|l| !l.is_empty()) {
+    println!("{}" , header);
+}
+println!("\nBody:");
+for body in lines {
+    println!("{}" , body);
+}
+
+use std::iter::{once, repeat};
+let fizzes = repeat("").take(2).chain(once("fizz")).cycle();
+let buzzes = repeat("").take(4).chain(once("buzz")).cycle();
+let fizzes_buzzes = fizzes.zip(buzzes);
+let fizz_buzz = (1..100).zip(fizzes_buzzes)
+    .map(|tuple|
+        match tuple {
+            (i, ("", "")) => i.to_string(),
+            (_, (fizz, buzz)) => format!("{}{}", fizz, buzz)
+        });
+
+for line in fizz_buzz {
+    println!("{}", line);
+}
+
+// fold defiens a recurrance relation
+let a = [5, 6, 7, 8, 9, 10];
+assert_eq!(a.iter().fold(0, |n, _| n+1), 6); // count
+assert_eq!(a.iter().fold(0, |n, i| n+i), 45); // sum
+assert_eq!(a.iter().fold(1, |n, i| n*i), 151200); // product
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let stdin = std::io::stdin();
+    let sum = stdin.lock()
+    .lines()
+        .try_fold(0, |sum, line| -> Result<u64, Box<dyn Error>> {
+        Ok(sum + u64::from_str(&line?.trim())?)
+        })?;
+    println!("{}", sum);
+    Ok(())
+}
+
+let args: HashSet<String> = std::env::args().collect();
+let args: BTreeSet<String> = std::env::args().collect();
+let args: LinkedList<String> = std::env::args().collect();
+// Collecting a map requires (key, value) pairs, so for this example,
+// zip the sequence of strings with a sequence of integers.
+let args: HashMap<String, usize> = std::env::args().zip(0..).collect();
+let args: BTreeMap<String, usize> = std::env::args().zip(0..).collect();
+
+let mut v: Vec<i32> = (0..5).map(|i| 1 << i).collect();
+v.extend(&[31, 57, 99, 163]);
+assert_eq!(v, &[1, 2, 4, 8, 16, 31, 57, 99, 163]);
+
+
+```
+
 ## Code Samples
 
 ```rust
