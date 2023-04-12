@@ -1,3 +1,4 @@
+mod collections;
 mod custom_traits;
 mod custom_trees;
 mod event_system;
@@ -41,4 +42,5 @@ fn main() {
 
     event_system::run_simulation();
     iterators::simulate_iterators();
+    collections::collections_examples();
 }

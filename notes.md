@@ -1792,8 +1792,40 @@ let args: BTreeMap<String, usize> = std::env::args().zip(0..).collect();
 let mut v: Vec<i32> = (0..5).map(|i| 1 << i).collect();
 v.extend(&[31, 57, 99, 163]);
 assert_eq!(v, &[1, 2, 4, 8, 16, 31, 57, 99, 163]);
+```
 
+## Collections
 
+```rust
+// Create an empty vector
+let mut numbers: Vec<i32> = vec![];
+// Create a vector with given contents
+let words = vec!["step", "on", "no", "pets"];
+let mut buffer = vec![0u8; 1024]; // 1024 zeroed-out bytes
+
+// Get a reference to an element
+let first_line = &lines[0];
+// Get a copy of an element
+let fifth_number = numbers[4]; // requires Copy
+let second_line = lines[1].clone(); // requires Clone
+// Get a reference to a slice
+let my_ref = &buffer[4..12];
+// Get a copy of a slice
+let my_copy = buffer[4..12].to_vec(); // requires Clone
+
+let mut slice = [0, 1, 2, 3];
+{
+    let last = slice.last_mut().unwrap(); // type of last: &mut i32
+    assert_eq!(*last, 3);
+    *last = 100;
+}
+assert_eq!(slice, [0, 1, 2, 100]);
+
+Rust’s std::collections::VecDeque<T> is a deque (pronounced “deck”), a doubleended queue
+
+// Hashmaps
+// Checking if an element exists and creating it if not!
+let record = student_map.entry(name.to_string()).or_insert_with(Student::new);
 ```
 
 ## Code Samples
