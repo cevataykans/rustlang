@@ -1903,8 +1903,81 @@ unicode-normalization = "0.1.17"
 ## Input and Output
 
 ```rust
+/*
+Rust’s standard library features for input and output are organized around three
+traits, Read, BufRead, and Write:
+*/
 
+use std::io::{self, Read, Write, ErrorKind};
+
+const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+
+// implementation of std::io::copy()
+pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W)
+    -> io::Result<u64>
+    where R: Read, W: Write
+{
+    let mut buf = [0; DEFAULT_BUF_SIZE];
+    let mut written = 0;
+    loop {
+        let len = match reader.read(&mut buf) {
+            Ok(0) => return Ok(written),
+            Ok(len) => len,
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        };
+        writer.write_all(&buf[..len])?;
+        written += len as u64;
+    }
+}
+
+/*
+readers and writers can be buffered, which simply means they have a
+chunk of memory (a buffer) that holds some input or output data in memory. This
+saves on system calls
+*/
+
+// For specifying certain options when opening files
+use std::fs::OpenOptions;
+
+
+use std::process::{Command, Stdio};
+let mut child =
+Command::new("grep")
+    .arg("-e")
+    .arg("a.*e.*i.*o.*u")
+    .stdin(Stdio::piped())
+    .spawn()?;
+
+let mut to_child = child.stdin.take().unwrap();
+for word in my_words {
+    writeln!(to_child, "{}", word)?;
+}
+drop(to_child); // close grep's stdin, so it will exit
+child.wait()?;
+
+//** serde crate is good for json!
+
+//** std::path and std::fs contain file and path modules!
+
+/*
+Rust strings are always valid Unicode. Filenames are almost always Unicode in prac‐
+tice, but Rust has to cope somehow with the rare case where they aren’t. This is why
+Rust has std::ffi::OsStr and OsString
+*/
+
+//**  Use Path for both absolute and relative paths. For an individual component of a path, use OsStr
+
+/*
+For low-level networking code, start with the std::net module, which provides
+cross-platform support for TCP and UDP networking. Use the native_tls crate for
+SSL/TLS support
+*/
 ```
+
+## Concurrency
+
+
 
 ## Code Samples
 
