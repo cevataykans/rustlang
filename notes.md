@@ -1828,6 +1828,84 @@ Rust’s std::collections::VecDeque<T> is a deque (pronounced “deck”), a dou
 let record = student_map.entry(name.to_string()).or_insert_with(Student::new);
 ```
 
+## Strings and Text
+
+```rust
+assert_eq!("うどん: udon".as_bytes(),
+    &[0xe3, 0x81, 0x86, // う
+    0xe3, 0x81, 0xa9, // ど
+    0xe3, 0x82, 0x93, // ん
+    0x3a, 0x20, 0x75, 0x64, 0x6f, 0x6e // : udon
+    ]);
+
+assert_eq!('B' as u32, 66);
+assert_eq!('饂' as u8, 66); // upper bits truncated
+assert_eq!('二' as i8, -116); // same
+
+to lowercase and uppercase produce iterator because -> German "es" is uppercase with two letters: SS
+
+Turkish İ is lowercase with i. (dot is slient and ignored)
+
+use std::fmt;
+impl fmt::Display for Complex {
+    fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
+        let im_sign = if self.im < 0.0 { '-' } else { '+' };
+        write!(dest, "{} {} {}i", self.re, im_sign, f64::abs(self.im))
+    }
+}
+
+// writing to custom log
+fn logging_enabled() -> bool { ... }
+use std::fs::OpenOptions;
+use std::io::Write;
+fn write_log_entry(entry: std::fmt::Arguments) {
+    if logging_enabled() {
+        // Keep things simple for now, and just
+        // open the file every time.
+        let mut log_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("log-file-name")
+        .expect("failed to open log file");
+        log_file.write_fmt(entry)
+        .expect("failed to write to log");
+    }
+}
+
+macro_rules! log { // no ! needed after name in macro definitions
+    ($format:tt, $($arg:expr),*) => (
+        write_log_entry(format_args!($format, $($arg),*))
+    )
+}
+
+log!("O day and night, but this is wondrous strange! {:?}\n",
+    mysterious_value);
+
+//*** The external regex crate is Rust’s official regular expression library. 
+
+/*
+The lazy_static crate provides a nice way to construct static values lazily the first
+time they are used. To start with, note the dependency in your Cargo.toml file
+
+Use this with regex to compute expensive regex initializations once
+*/
+use lazy_static::lazy_static;
+lazy_static! {
+    static ref SEMVER: Regex
+    = Regex::new(r"(\d+)\.(\d+)\.(\d+)(-[-.[:alnum:]]*)?")
+        .expect("error parsing regex");
+}
+
+// use this crate for unicode normalization
+unicode-normalization = "0.1.17"
+```
+
+## Input and Output
+
+```rust
+
+```
+
 ## Code Samples
 
 ```rust
